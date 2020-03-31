@@ -6,7 +6,21 @@ LIST(REMOVE_ITEM TEST_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/detector_benchmark.cpp
 foreach(testsourcefile ${TEST_SOURCES})
   get_filename_component(testname ${testsourcefile} NAME_WE)
   add_executable(${testname} ${testsourcefile})
-  target_link_libraries(${testname} common dummy_service_thrift gtest ssl stats thriftprotocol)
+  target_link_libraries(
+    ${testname}
+    common
+    dummy_service_thrift
+    gtest
+    ssl
+    stats
+    FBThrift::thriftprotocol
+    )
+  target_include_directories(
+    ${testname}
+    PUBLIC
+    ${FBTHRIFT_INCLUDE_DIR}
+    ${WANGLE_INCLUDE_DIR}
+    )
   add_test(NAME ${testname} COMMAND ${testname})
 endforeach(testsourcefile ${TEST_SOURCES})
 

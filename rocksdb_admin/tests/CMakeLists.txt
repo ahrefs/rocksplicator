@@ -11,12 +11,12 @@ list(REMOVE_ITEM TEST_SOURCES "${EXCLUDE_HBASE_TEST_FILE}" "${EXCLUDE_S3_TEST_FI
 foreach(testsourcefile ${TEST_SOURCES})
   get_filename_component(testname ${testsourcefile} NAME_WE)
   add_executable(${testname} ${testsourcefile})
-  target_link_libraries(${testname} gtest rocksdb_admin rocksdb_admin_detail boost_filesystem rocksdb_glogger kafka_consumer rdkafka++)
+  target_link_libraries(${testname} gtest rocksdb_admin rocksdb_admin_detail boost_filesystem rocksdb_glogger kafka_consumer RdKafka::rdkafka++)
   add_test(NAME ${testname} COMMAND ${testname})
 endforeach(testsourcefile ${TEST_SOURCES})
 
 add_executable(hbase_backup_integration_test hbase_backup_integration_test.cpp)
-target_link_libraries(hbase_backup_integration_test gtest rocksdb_admin boost_filesystem rocksdb_glogger kafka_consumer rdkafka++)
+target_link_libraries(hbase_backup_integration_test gtest rocksdb_admin boost_filesystem rocksdb_glogger kafka_consumer RdKafka::rdkafka++)
 
 add_executable(s3_backup_integration_test s3_backup_integration_test.cpp)
-target_link_libraries(s3_backup_integration_test common gtest rocksdb_admin boost_filesystem rocksdb_glogger kafka_consumer rdkafka++)
+target_link_libraries(s3_backup_integration_test common gtest rocksdb_admin boost_filesystem rocksdb_glogger kafka_consumer RdKafka::rdkafka++)

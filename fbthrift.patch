@@ -1,0 +1,53 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 0fc9e2cfd..251e2caca 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -115,7 +115,7 @@ endif(compiler_only OR build_all)
+ 
+ # Find required dependencies for thrift/lib
+ if(lib_only OR build_all)
+-  find_package(Gflags REQUIRED)
++  find_package(gflags COMPONENTS static CONFIG QUIET)
+   find_package(Glog REQUIRED)
+   find_package(folly CONFIG REQUIRED)
+   find_package(yarpl CONFIG REQUIRED)
+diff --git a/build/fbcode_builder/CMake/FindGflags.cmake b/build/fbcode_builder/CMake/FindGflags.cmake
+index 246ceacdd..5f21ad6c9 100644
+--- a/build/fbcode_builder/CMake/FindGflags.cmake
++++ b/build/fbcode_builder/CMake/FindGflags.cmake
+@@ -33,7 +33,7 @@ IF (LIBGFLAGS_INCLUDE_DIR)
+   SET(Gflags_FIND_QUIETLY TRUE)
+ ENDIF ()
+ 
+-find_package(gflags CONFIG QUIET)
++find_package(gflags COMPONENTS static CONFIG QUIET)
+ if (gflags_FOUND)
+   if (NOT Gflags_FIND_QUIETLY)
+     message(STATUS "Found gflags from package config ${gflags_CONFIG}")
+diff --git a/thrift/lib/cpp/CMakeLists.txt b/thrift/lib/cpp/CMakeLists.txt
+index a0dbefbf2..24eee2080 100644
+--- a/thrift/lib/cpp/CMakeLists.txt
++++ b/thrift/lib/cpp/CMakeLists.txt
+@@ -46,8 +46,9 @@ target_link_libraries(
+   concurrency
+   PUBLIC
+     Folly::folly
+-    ${LIBGFLAGS_LIBRARY}
+     ${GLOG_LIBRARIES}
++  PRIVATE
++    ${LIBGFLAGS_LIBRARY}
+ )
+ 
+ bypass_source_check("${reflection-cpp2-SOURCES}")
+diff --git a/thrift/lib/cpp2/CMakeLists.txt b/thrift/lib/cpp2/CMakeLists.txt
+index 00b5e161b..abc202274 100644
+--- a/thrift/lib/cpp2/CMakeLists.txt
++++ b/thrift/lib/cpp2/CMakeLists.txt
+@@ -60,6 +60,7 @@ target_link_libraries(
+     Folly::folly
+     thriftmetadata
+     ${GLOG_LIBRARIES}
++  PRIVATE
+     ${LIBGFLAGS_LIBRARY}
+ )
+ 

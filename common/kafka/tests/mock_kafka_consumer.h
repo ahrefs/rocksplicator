@@ -93,6 +93,15 @@ public:
     CHECK(false) << "Not implemented";
     return nullptr;
   }
+  Message::Status status() const override {
+    return MSG_STATUS_POSSIBLY_PERSISTED;
+  }
+  Headers* headers() override {
+    return nullptr;
+  }
+  Headers* headers(ErrorCode *) override {
+    return nullptr;
+  }
 
 private:
   const std::string topic_name_;
@@ -207,6 +216,23 @@ public:
     }
 
     return ERR_NO_ERROR;
+  }
+
+  int32_t controllerid(int) override {
+    return 0;
+  }
+  ErrorCode fatal_error(std::string&) override {
+    return ERR_NO_ERROR;
+  }
+  ErrorCode oauthbearer_set_token(const std::string&,
+                                  int64_t,
+                                  const std::string&,
+                                  const std::list<std::string>&,
+                                  std::string&) override {
+    return ERR__NOT_IMPLEMENTED;
+  }
+  ErrorCode oauthbearer_set_token_failure(const std::string&) override {
+    return ERR__NOT_IMPLEMENTED;
   }
 
 private:

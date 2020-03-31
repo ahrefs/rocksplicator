@@ -324,7 +324,7 @@ bool DeserializeKafkaPayload(
       &msg_payload)) {
     *op_code = msg_payload.op_code;
     if (msg_payload.__isset.value) {
-      *value = std::move(msg_payload.value);
+      *value = std::move(*msg_payload.value_ref());
     }
     return true;
   } else {
@@ -457,7 +457,7 @@ void AdminHandler::async_tm_addDB(
   auto segment = admin::DbNameToSegment(request->db_name);
   auto db_path = FLAGS_rocksdb_dir + request->db_name;
   rocksdb::Status status;
-  if (request->overwrite) {
+  if (request->overwrite_ref().value_or(false)) {
     LOG(INFO) << "Clearing DB: " << request->db_name;
     clearMetaData(request->db_name);
     status = rocksdb::DestroyDB(db_path, rocksdb_options_(segment));
@@ -484,13 +484,13 @@ void AdminHandler::async_tm_addDB(
   std::string err_msg;
   replicator::DBRole role = replicator::DBRole::SLAVE;
   if (request->__isset.db_role) {
-    if (request->db_role == "SLAVE") {
+    if (*request->get_db_role() == "SLAVE") {
       role = replicator::DBRole::SLAVE;
-    } else if (request->db_role == "NOOP") {
+    } else if (*request->get_db_role() == "NOOP") {
       role = replicator::DBRole::NOOP;
     } else {
       e.errorCode = AdminErrorCode::INVALID_DB_ROLE;
-      e.message = std::move(request->db_role);
+      e.message = std::move(*request->db_role_ref());
       callback.release()->exceptionInThread(std::move(e));
       return;
     }
@@ -640,7 +640,7 @@ void AdminHandler::async_tm_backupDB(
                       full_path,
                       std::unique_ptr<rocksdb::Env>(hdfs_env),
                       request->__isset.limit_mbs,
-                      request->limit_mbs,
+                      request->limit_mbs_ref().value_or(0),
                       &e)) {
     callback.release()->exceptionInThread(std::move(e));
     common::Stats::get()->Incr(kHDFSBackupFailure);
@@ -683,7 +683,7 @@ void AdminHandler::async_tm_restoreDB(
                        std::unique_ptr<rocksdb::Env>(hdfs_env),
                        std::move(upstream_addr),
                        request->__isset.limit_mbs,
-                       request->limit_mbs,
+                       request->limit_mbs_ref().value_or(0),
                        &e)) {
     callback.release()->exceptionInThread(std::move(e));
     common::Stats::get()->Incr(kHDFSRestoreFailure);
@@ -740,7 +740,7 @@ void AdminHandler::async_tm_backupDBToS3(
   }
 
   common::Timer timer(kS3BackupMs);
-  auto local_s3_util = createLocalS3Util(request->limit_mbs, request->s3_bucket);
+  auto local_s3_util = createLocalS3Util(request->limit_mbs_ref().value_or(0), request->s3_bucket);
   std::string formatted_s3_dir_path = rtrim(request->s3_backup_dir, '/');
   rocksdb::Env* s3_env = new rocksdb::S3Env(formatted_s3_dir_path, local_path, std::move(local_s3_util));
 
@@ -749,7 +749,7 @@ void AdminHandler::async_tm_backupDBToS3(
                       formatted_s3_dir_path,
                       std::unique_ptr<rocksdb::Env>(s3_env),
                       request->__isset.limit_mbs,
-                      request->limit_mbs,
+                      request->limit_mbs_ref().value_or(0),
                       &e)) {
     callback.release()->exceptionInThread(std::move(e));
     common::Stats::get()->Incr(kS3BackupFailure);
@@ -807,7 +807,7 @@ void AdminHandler::async_tm_restoreDBFromS3(
   }
 
   common::Timer timer(kS3RestoreMs);
-  auto local_s3_util = createLocalS3Util(request->limit_mbs, request->s3_bucket);
+  auto local_s3_util = createLocalS3Util(request->limit_mbs_ref().value_or(0), request->s3_bucket);
   std::string formatted_s3_dir_path = rtrim(request->s3_backup_dir, '/');
   rocksdb::Env* s3_env = new rocksdb::S3Env(
   formatted_s3_dir_path, std::move(local_path), std::move(local_s3_util));
@@ -818,7 +818,7 @@ void AdminHandler::async_tm_restoreDBFromS3(
                        std::unique_ptr<rocksdb::Env>(s3_env),
                        std::move(upstream_addr),
                        request->__isset.limit_mbs,
-                       request->limit_mbs,
+                       request->limit_mbs_ref().value_or(0),
                        &e)) {
     callback.release()->exceptionInThread(std::move(e));
     common::Stats::get()->Incr(kS3RestoreFailure);
@@ -842,14 +842,15 @@ void AdminHandler::async_tm_checkDB(
   }
 
   CheckDBResponse response;
-  response.set_seq_num(db->rocksdb()->GetLatestSequenceNumber());
+  auto seq_num = db->rocksdb()->GetLatestSequenceNumber();
+  response.set_seq_num(seq_num);
   response.set_wal_ttl_seconds(db->rocksdb()->GetOptions().WAL_ttl_seconds);
   response.set_is_master(!db->IsSlave());
 
   // If there is at least one update
-  if (response.seq_num != 0) {
+  if (seq_num != 0) {
     std::unique_ptr<rocksdb::TransactionLogIterator> iter;
-    auto status = db->rocksdb()->GetUpdatesSince(response.seq_num, &iter);
+    auto status = db->rocksdb()->GetUpdatesSince(seq_num, &iter);
 
     if (status.ok() && iter && iter->Valid()) {
       auto batch = iter->GetBatch();
@@ -905,7 +906,7 @@ void AdminHandler::async_tm_changeDBRoleAndUpStream(
       request->__isset.upstream_ip &&
       request->__isset.upstream_port) {
     upstream_addr = std::make_unique<folly::SocketAddress>();
-    if (!SetAddressOrException(request->upstream_ip,
+    if (!SetAddressOrException(*request->upstream_ip_ref(),
                                FLAGS_rocksdb_replicator_port,
                                upstream_addr.get(),
                                &callback)) {
@@ -955,7 +956,8 @@ void AdminHandler::async_tm_clearDB(
   SCOPE_EXIT { db_admin_lock_.Unlock(request->db_name); };
 
   bool need_to_reopen = false;
-  replicator::DBRole db_role;
+  // TODO: WHAT IS THE DEFAULT HERE?
+  replicator::DBRole db_role = replicator::DBRole::NOOP;
   std::unique_ptr<folly::SocketAddress> upstream_addr;
   {
     auto db = getDB(request->db_name, nullptr);
@@ -986,7 +988,7 @@ void AdminHandler::async_tm_clearDB(
   }
   LOG(INFO) << "Done clearing DB: " << request->db_name;
 
-  if (request->reopen_db && need_to_reopen) {
+  if (request->reopen_db_ref().value_or(false) && need_to_reopen) {
     LOG(INFO) << "Open DB: " << request->db_name;
     admin::AdminException e;
     e.errorCode = AdminErrorCode::DB_ADMIN_ERROR;
@@ -1066,9 +1068,9 @@ void AdminHandler::async_tm_addS3SstFilesToDB(
   }
 
   auto meta = getMetaData(request->db_name);
-  if (meta.__isset.s3_bucket && meta.s3_bucket == request->s3_bucket &&
-      meta.__isset.s3_path && meta.s3_path == request->s3_path) {
-    LOG(INFO) << "Already hosting " << meta.s3_bucket << "/" << meta.s3_path;
+  if (meta.s3_bucket_ref() && *meta.s3_bucket_ref() == request->s3_bucket &&
+      meta.s3_path_ref() && *meta.s3_path_ref() == request->s3_path) {
+    LOG(INFO) << "Already hosting " << *meta.s3_bucket_ref() << "/" << *meta.s3_path_ref();
     callback->result(AddS3SstFilesToDBResponse());
     return;
   }
@@ -1106,9 +1108,9 @@ void AdminHandler::async_tm_addS3SstFilesToDB(
 
 
   if (FLAGS_s3_download_limit_mb > 0) {
-    request->s3_download_limit_mb = FLAGS_s3_download_limit_mb;
+    request->set_s3_download_limit_mb(FLAGS_s3_download_limit_mb);
   }
-  auto local_s3_util = createLocalS3Util(request->s3_download_limit_mb, request->s3_bucket);
+  auto local_s3_util = createLocalS3Util(request->s3_download_limit_mb_ref().value_or(0), request->s3_bucket);
   auto responses = local_s3_util->getObjects(request->s3_path,
                                       local_path, "/", FLAGS_s3_direct_io);
   if (!responses.Error().empty() || responses.Body().size() == 0) {
@@ -1258,7 +1260,7 @@ void AdminHandler::async_tm_startMessageIngestion(
   // Compare the value in local_meta_db with replay_timestamp_ms and choose
   // the latest.
   const auto meta = getMetaData(db_name);
-  replay_timestamp_ms = std::max(meta.last_kafka_msg_timestamp_ms,
+  replay_timestamp_ms = std::max(meta.last_kafka_msg_timestamp_ms_ref().value_or(0),
                                  replay_timestamp_ms);
   LOG(ERROR) << "Using " << replay_timestamp_ms << " as the replay timestamp "
              << "for " << db_name;
@@ -1425,7 +1427,7 @@ void AdminHandler::async_tm_startMessageIngestion(
     if (message_count % FLAGS_kafka_ts_update_interval == 0) {
       const auto timestamp_ms = message->timestamp().timestamp;
       const auto meta = getMetaData(db_name);
-      writeMetaData(db_name, meta.s3_bucket, meta.s3_path, timestamp_ms);
+      writeMetaData(db_name, meta.s3_bucket_ref().value_or(""), meta.s3_path_ref().value_or(""), timestamp_ms);
       LOG(INFO) << "[meta_db] Writing timestamp " << timestamp_ms
                 << " for db: " << db_name;
     }

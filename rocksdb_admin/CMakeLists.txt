@@ -1,28 +1,54 @@
 cmake_minimum_required(VERSION 3.1)
 
 set(GEN_FILES
-    "gen-cpp2/rocksdb_admin_types.tcc"
-    "gen-cpp2/rocksdb_admin_types.cpp"
-    "gen-cpp2/rocksdb_admin_types.h"
-    "gen-cpp2/rocksdb_admin_constants.h"
-    "gen-cpp2/rocksdb_admin_constants.cpp"
-    "gen-cpp2/Admin.tcc"
     "gen-cpp2/Admin.cpp"
-    "gen-cpp2/Admin.h"
-    "gen-cpp2/Admin_client.cpp")
+    "gen-cpp2/Admin.tcc"
+    "gen-cpp2/AdminAsyncClient.cpp"
+    "gen-cpp2/Admin_processmap_binary.cpp"
+    "gen-cpp2/Admin_processmap_compact.cpp"
+    "gen-cpp2/rocksdb_admin_constants.cpp"
+    "gen-cpp2/rocksdb_admin_data.cpp"
+    "gen-cpp2/rocksdb_admin_metadata.cpp"
+    "gen-cpp2/rocksdb_admin_types.cpp"
+    "gen-cpp2/rocksdb_admin_types.tcc"
+    )
 
 add_custom_command(
   OUTPUT ${GEN_FILES}
-  COMMAND python -mthrift_compiler.main --gen cpp2 -I. -o ./ ${CMAKE_CURRENT_SOURCE_DIR}/rocksdb_admin.thrift
+  COMMAND
+  ${FBTHRIFT_COMPILER} --gen mstch_cpp2:include_prefix=".."
+  ${CMAKE_CURRENT_SOURCE_DIR}/rocksdb_admin.thrift
   DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/rocksdb_admin.thrift
 )
 
 AUX_SOURCE_DIRECTORY(./ SRC_FILES)
 
 add_library(rocksdb_admin ${GEN_FILES} ${SRC_FILES})
-target_link_libraries(rocksdb_admin thrift thriftcpp2 rocksdb rocksdb_replicator
-        rocksdb_admin_detail folly glog pthread boost_filesystem rocksdb_glogger
-        common jvm kafka_consumer rdkafka++ )
+
+target_include_directories(
+  rocksdb_admin
+  PUBLIC
+  ${FOLLY_INCLUDE_DIR}
+  )
+
+target_link_libraries(
+  rocksdb_admin
+
+  ${JNI_LIBRARIES}
+  FBThrift::thrift
+  FBThrift::thriftcpp2
+  Folly::folly
+  RdKafka::rdkafka++
+  RocksDB::rocksdb
+  boost_filesystem
+  common
+  glog
+  kafka_consumer
+  pthread
+  rocksdb_admin_detail
+  rocksdb_glogger
+  rocksdb_replicator
+  )
 
 add_subdirectory(tests)
 add_subdirectory(detail)

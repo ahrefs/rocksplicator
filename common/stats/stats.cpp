@@ -17,10 +17,10 @@
 
 #include <boost/format.hpp>
 #include <folly/Memory.h>
-#include <folly/stats/BucketedTimeSeries-defs.h>
-#include <folly/stats/MultiLevelTimeSeries-defs.h>
-#include <folly/stats/Histogram-defs.h>
-#include <folly/stats/TimeseriesHistogram-defs.h>
+#include <folly/stats/BucketedTimeSeries-inl.h>
+#include <folly/stats/MultiLevelTimeSeries-inl.h>
+#include <folly/stats/Histogram-inl.h>
+#include <folly/stats/TimeseriesHistogram-inl.h>
 #include <folly/String.h>
 #include <cstdlib>
 #include <sstream>

@@ -7,6 +7,8 @@ build
 .DS_store
 target/
 cmake-build-debug/
+external/
+workdir/
 
 # vim
 .ycm_extra_conf.py

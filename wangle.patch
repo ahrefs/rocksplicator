@@ -1,0 +1,46 @@
+diff --git a/build/fbcode_builder/CMake/FindGflags.cmake b/build/fbcode_builder/CMake/FindGflags.cmake
+index 246ceacd..5f21ad6c 100644
+--- a/build/fbcode_builder/CMake/FindGflags.cmake
++++ b/build/fbcode_builder/CMake/FindGflags.cmake
+@@ -33,7 +33,7 @@ IF (LIBGFLAGS_INCLUDE_DIR)
+   SET(Gflags_FIND_QUIETLY TRUE)
+ ENDIF ()
+ 
+-find_package(gflags CONFIG QUIET)
++find_package(gflags COMPONENTS static CONFIG QUIET)
+ if (gflags_FOUND)
+   if (NOT Gflags_FIND_QUIETLY)
+     message(STATUS "Found gflags from package config ${gflags_CONFIG}")
+diff --git a/wangle/CMakeLists.txt b/wangle/CMakeLists.txt
+index 7ae8e9e1..75c1f1c2 100644
+--- a/wangle/CMakeLists.txt
++++ b/wangle/CMakeLists.txt
+@@ -58,12 +58,12 @@ find_package(Boost REQUIRED COMPONENTS system thread filesystem regex context
+                                        program_options)
+ find_package(OpenSSL REQUIRED)
+ find_package(Glog REQUIRED)
+-find_package(gflags CONFIG QUIET)
++find_package(gflags COMPONENTS static CONFIG QUIET)
+ if (gflags_FOUND)
+   message(STATUS "Found gflags from package config")
+   message(STATUS "gflags_CONFIG=${gflags_CONFIG}")
+ else()
+-  find_package(Gflags REQUIRED)
++  message(FATAL_MESSAGE "gflags not found")
+ endif()
+ find_package(LibEvent MODULE REQUIRED)
+ find_package(DoubleConversion REQUIRED)
+@@ -163,12 +163,12 @@ target_link_libraries(wangle PUBLIC
+   ${Boost_LIBRARIES}
+   ${OPENSSL_LIBRARIES}
+   ${GLOG_LIBRARIES}
+-  ${GFLAGS_LIBRARIES}
+   ${LIBEVENT_LIB}
+   ${DOUBLE_CONVERSION_LIBRARIES}
+   ${CMAKE_DL_LIBS}
+   ${LIBRT_LIBRARIES}
+   Threads::Threads)
++target_link_libraries(wangle PRIVATE gflags_static)
+ 
+ install(
+   TARGETS wangle

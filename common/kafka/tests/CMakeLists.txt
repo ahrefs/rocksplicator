@@ -12,7 +12,13 @@ ADD_LIBRARY(mock_kafka_consumer ${mock_kafka_SRCS})
 foreach(testsourcefile ${TEST_SOURCES})
   get_filename_component(testname ${testsourcefile} NAME_WE)
   add_executable(${testname} ${testsourcefile})
-  target_link_libraries(${testname} common gtest kafka_consumer mock_kafka_consumer rdkafka++)
+
+  target_include_directories(
+    ${testname}
+    PUBLIC
+    ${FOLLY_INCLUDE_DIR}
+    )
+  target_link_libraries(${testname} common gtest kafka_consumer mock_kafka_consumer RdKafka::rdkafka++)
   add_test(NAME ${testname} COMMAND ${testname})
 endforeach(testsourcefile ${TEST_SOURCES})
 

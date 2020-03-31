@@ -1,0 +1,66 @@
+diff --git a/build/fbcode_builder/CMake/FindGflags.cmake b/build/fbcode_builder/CMake/FindGflags.cmake
+index 246ceac..f8b8b35 100644
+--- a/build/fbcode_builder/CMake/FindGflags.cmake
++++ b/build/fbcode_builder/CMake/FindGflags.cmake
+@@ -39,7 +39,7 @@ if (gflags_FOUND)
+     message(STATUS "Found gflags from package config ${gflags_CONFIG}")
+   endif()
+   # Re-export the config-specified libs with our local names
+-  set(LIBGFLAGS_LIBRARY ${gflags_LIBRARIES})
++  set(LIBGFLAGS_LIBRARY gflags)
+   set(LIBGFLAGS_INCLUDE_DIR ${gflags_INCLUDE_DIR})
+   set(LIBGFLAGS_FOUND ${gflags_FOUND})
+   # cmake module compat
+diff --git a/fizz/CMakeLists.txt b/fizz/CMakeLists.txt
+index ccbbbb6..a6e519c 100644
+--- a/fizz/CMakeLists.txt
++++ b/fizz/CMakeLists.txt
+@@ -63,22 +63,11 @@ SET(FIZZ_INCLUDE_DIRECTORIES "")
+ 
+ find_package(gflags CONFIG QUIET)
+ if (gflags_FOUND)
+-  message(STATUS "Found gflags from package config")
+-  if (TARGET gflags-shared)
+-    list(APPEND FIZZ_SHINY_DEPENDENCIES gflags-shared)
+-  elseif (TARGET gflags)
+-    list(APPEND FIZZ_SHINY_DEPENDENCIES gflags)
+-  else()
+-    message(FATAL_ERROR "Unable to determine the target name for the GFlags package.")
+-  endif()
+-  list(APPEND CMAKE_REQUIRED_LIBRARIES ${GFLAGS_LIBRARIES})
++  message(STATUS "Found gflags from package config: " ${GFLAGS_LIBRARIES})
++  list(APPEND FIZZ_SHINY_DEPENDENCIES gflags)
+   list(APPEND CMAKE_REQUIRED_INCLUDES ${GFLAGS_INCLUDE_DIR})
+ else()
+-  find_package(Gflags REQUIRED MODULE)
+-  list(APPEND FIZZ_LINK_LIBRARIES ${LIBGFLAGS_LIBRARY})
+-  list(APPEND FIZZ_INCLUDE_DIRECTORIES ${LIBGFLAGS_INCLUDE_DIR})
+-  list(APPEND CMAKE_REQUIRED_LIBRARIES ${LIBGFLAGS_LIBRARY})
+-  list(APPEND CMAKE_REQUIRED_INCLUDES ${LIBGFLAGS_INCLUDE_DIR})
++  message(FATAL_ERROR "gflags not found")
+ endif()
+ 
+ find_package(Libevent CONFIG QUIET)
+@@ -219,7 +208,6 @@ target_include_directories(
+     ${DOUBLE_CONVERSION_INCLUDE_DIRS}
+ )
+ 
+-
+ target_link_libraries(fizz
+   PUBLIC
+     ${FOLLY_LIBRARIES}
+@@ -232,11 +220,12 @@ target_link_libraries(fizz
+     Threads::Threads
+   PRIVATE
+     ${GLOG_LIBRARIES}
+-    ${GFLAGS_LIBRARIES}
+     ${FIZZ_LINK_LIBRARIES}
+     ${DOUBLE_CONVERSION_LIBRARIES}
+     ${CMAKE_DL_LIBS}
+-    ${LIBRT_LIBRARIES})
++    ${LIBRT_LIBRARIES}
++    gflags
++    )
+ 
+ if ($FIZZ_SHINY_DEPENDENCIES)
+   add_dependencies(fizz ${FIZZ_SHINY_DEPENDENCIES})

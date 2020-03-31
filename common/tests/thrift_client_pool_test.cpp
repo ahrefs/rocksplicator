@@ -255,7 +255,7 @@ void stressTest(uint32_t nThreads, uint32_t nCalls, uint32_t nBatchSz,
           }
 
           for (auto& f : v) {
-            EXPECT_NO_THROW(f.get());
+            EXPECT_NO_THROW(std::move(f).get());
           }
         }
       });

@@ -76,7 +76,7 @@ int main(int argc, char** argv) {
                 folly::to<std::string>(current_value % FLAGS_key_num_per_thread);
               tokens.blockingWrite(true);
               auto options = rpc_options;
-              client->future_bumpCounter(options, bump_request).then([&tokens] () {
+              client->future_bumpCounter(options, bump_request).then([&tokens] (auto) {
                   bool b;
                   tokens.read(b);
                 });

@@ -49,10 +49,10 @@ void CounterHandler::async_tm_getCounter(
   common::Timer timer(kApiGetCounterMs);
 
   CounterException ex;
-  if (request->need_routing) {
-    request->need_routing = false;
+  if (request->need_routing_ref().value_or(true)) {
+    request->set_need_routing(false);
     std::vector<std::shared_ptr<CounterAsyncClient>> clients;
-    router_->GetClientsFor(request->segment,
+    router_->GetClientsFor(request->segment_ref().value_or("default"),
                            request->counter_name,
                            true /* for_read */,
                            &clients);
@@ -76,7 +76,7 @@ void CounterHandler::async_tm_getCounter(
     return;
   }
 
-  auto db_name = router_->GetDBName(request->segment, request->counter_name);
+  auto db_name = router_->GetDBName(request->segment_ref().value_or("default"), request->counter_name);
   auto db = getDB(db_name, &ex);
 
   if (db == nullptr) {
@@ -114,10 +114,10 @@ void CounterHandler::async_tm_setCounter(
   common::Timer timer(kApiSetCounterMs);
 
   CounterException ex;
-  if (request->need_routing) {
-    request->need_routing = false;
+  if (request->need_routing_ref().value_or(true)) {
+    request->set_need_routing(false);
     std::vector<std::shared_ptr<CounterAsyncClient>> clients;
-    router_->GetClientsFor(request->segment,
+    router_->GetClientsFor(request->segment_ref().value_or("default"),
                            request->counter_name,
                            false /* for_read */,
                            &clients);
@@ -141,7 +141,7 @@ void CounterHandler::async_tm_setCounter(
     return;
   }
 
-  auto db_name = router_->GetDBName(request->segment, request->counter_name);
+  auto db_name = router_->GetDBName(request->segment_ref().value_or("default"), request->counter_name);
   auto db = getDB(db_name, &ex);
 
   if (db == nullptr) {
@@ -174,10 +174,10 @@ void CounterHandler::async_tm_bumpCounter(
   common::Timer timer(kApiBumpCounterMs);
 
   CounterException ex;
-  if (request->need_routing) {
-    request->need_routing = false;
+  if (request->need_routing_ref().value_or(true)) {
+    request->set_need_routing(false);
     std::vector<std::shared_ptr<CounterAsyncClient>> clients;
-    router_->GetClientsFor(request->segment,
+    router_->GetClientsFor(request->segment_ref().value_or("default"),
                            request->counter_name,
                            false /* for_read */,
                            &clients);
@@ -201,7 +201,7 @@ void CounterHandler::async_tm_bumpCounter(
     return;
   }
 
-  auto db_name = router_->GetDBName(request->segment, request->counter_name);
+  auto db_name = router_->GetDBName(request->segment_ref().value_or("default"), request->counter_name);
   auto db = getDB(db_name, &ex);
 
   if (db == nullptr) {

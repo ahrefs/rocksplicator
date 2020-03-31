@@ -1,0 +1,218 @@
+diff --git a/CMake/folly-deps.cmake b/CMake/folly-deps.cmake
+index 4fa8e05a8..a37d768c5 100644
+--- a/CMake/folly-deps.cmake
++++ b/CMake/folly-deps.cmake
+@@ -39,9 +39,9 @@ list(APPEND FOLLY_INCLUDE_DIRECTORIES ${DOUBLE_CONVERSION_INCLUDE_DIR})
+ find_package(Gflags MODULE)
+ set(FOLLY_HAVE_LIBGFLAGS ${LIBGFLAGS_FOUND})
+ if(LIBGFLAGS_FOUND)
+-  list(APPEND FOLLY_LINK_LIBRARIES ${LIBGFLAGS_LIBRARY})
++  list(APPEND FOLLY_LINK_LIBRARIES gflags)
+   list(APPEND FOLLY_INCLUDE_DIRECTORIES ${LIBGFLAGS_INCLUDE_DIR})
+-  list(APPEND CMAKE_REQUIRED_LIBRARIES ${LIBGFLAGS_LIBRARY})
++  list(APPEND CMAKE_REQUIRED_LIBRARIES gflags)
+   list(APPEND CMAKE_REQUIRED_INCLUDES ${LIBGFLAGS_INCLUDE_DIR})
+ endif()
+ 
+diff --git a/folly/concurrency/UnboundedQueue.h b/folly/concurrency/UnboundedQueue.h
+index fc56aba7c..1654f9bd0 100644
+--- a/folly/concurrency/UnboundedQueue.h
++++ b/folly/concurrency/UnboundedQueue.h
+@@ -751,101 +751,119 @@ class UnboundedQueue {
+     }
+   }
+ 
+-  /**
+-   *  Entry
+-   */
+-  class Entry {
+-    Sem flag_;
+-    aligned_storage_for_t<T> item_;
+-
+-   public:
+-    template <typename Arg>
+-    FOLLY_ALWAYS_INLINE void putItem(Arg&& arg) {
+-      new (&item_) T(std::forward<Arg>(arg));
+-      flag_.post();
+-    }
++}; // UnboundedQueue
+ 
+-    FOLLY_ALWAYS_INLINE T takeItem() noexcept {
+-      flag_.wait();
+-      return getItem();
+-    }
+ 
+-    FOLLY_ALWAYS_INLINE const T* peekItem() noexcept {
+-      flag_.wait();
+-      return itemPtr();
+-    }
++/**
++ *  Entry
++ */
++template<
++  typename T,
++  bool SingleProducer,
++  bool SingleConsumer,
++  bool MayBlock,
++  size_t LgSegmentSize,
++  size_t LgAlign,
++  template <typename> class Atom>
++class UnboundedQueue<T, SingleProducer, SingleConsumer, MayBlock, LgSegmentSize, LgAlign, Atom>::Entry {
++  Sem flag_;
++  aligned_storage_for_t<T> item_;
++
++public:
++  template <typename Arg>
++  FOLLY_ALWAYS_INLINE void putItem(Arg&& arg) {
++    new (&item_) T(std::forward<Arg>(arg));
++    flag_.post();
++  }
+ 
+-    template <typename Clock, typename Duration>
+-    FOLLY_EXPORT FOLLY_ALWAYS_INLINE bool tryWaitUntil(
+-        const std::chrono::time_point<Clock, Duration>& deadline) noexcept {
+-      // wait-options from benchmarks on contended queues:
+-      static constexpr auto const opt =
+-          Sem::wait_options().spin_max(std::chrono::microseconds(10));
+-      return flag_.try_wait_until(deadline, opt);
+-    }
++  FOLLY_ALWAYS_INLINE T takeItem() noexcept {
++    flag_.wait();
++    return getItem();
++  }
+ 
+-    FOLLY_ALWAYS_INLINE void destroyItem() noexcept {
+-      itemPtr()->~T();
+-    }
++  FOLLY_ALWAYS_INLINE const T* peekItem() noexcept {
++    flag_.wait();
++    return itemPtr();
++  }
+ 
+-   private:
+-    FOLLY_ALWAYS_INLINE T getItem() noexcept {
+-      T ret = std::move(*(itemPtr()));
+-      destroyItem();
+-      return ret;
+-    }
++  template <typename Clock, typename Duration>
++  FOLLY_EXPORT FOLLY_ALWAYS_INLINE bool tryWaitUntil(
++                                                     const std::chrono::time_point<Clock, Duration>& deadline) noexcept {
++    // wait-options from benchmarks on contended queues:
++    static constexpr auto const opt =
++      Sem::wait_options().spin_max(std::chrono::microseconds(10));
++    return flag_.try_wait_until(deadline, opt);
++  }
+ 
+-    FOLLY_ALWAYS_INLINE T* itemPtr() noexcept {
+-      return static_cast<T*>(static_cast<void*>(&item_));
+-    }
+-  }; // Entry
++  FOLLY_ALWAYS_INLINE void destroyItem() noexcept {
++    itemPtr()->~T();
++  }
+ 
+-  /**
+-   *  Segment
+-   */
+-  class Segment : public hazptr_obj_base_linked<Segment, Atom> {
+-    Atom<Segment*> next_{nullptr};
+-    const Ticket min_;
+-    alignas(Align) Entry b_[SegmentSize];
++private:
++  FOLLY_ALWAYS_INLINE T getItem() noexcept {
++    T ret = std::move(*(itemPtr()));
++    destroyItem();
++    return ret;
++  }
+ 
+-   public:
+-    explicit Segment(const Ticket t) noexcept : min_(t) {}
++  FOLLY_ALWAYS_INLINE T* itemPtr() noexcept {
++    return static_cast<T*>(static_cast<void*>(&item_));
++  }
++}; // Entry
+ 
+-    Segment* nextSegment() const noexcept {
+-      return next_.load(std::memory_order_acquire);
+-    }
++/**
++ *  Segment
++ */
++template<
++  typename T,
++  bool SingleProducer,
++  bool SingleConsumer,
++  bool MayBlock,
++  size_t LgSegmentSize,
++  size_t LgAlign,
++  template <typename> class Atom>
++class UnboundedQueue<T, SingleProducer, SingleConsumer, MayBlock, LgSegmentSize, LgAlign, Atom>::Segment : public hazptr_obj_base_linked<Segment, Atom> {
++  Atom<Segment*> next_{nullptr};
++  const Ticket min_;
++  alignas(Align) Entry b_[SegmentSize];
+ 
+-    void setNextSegment(Segment* next) {
+-      next_.store(next, std::memory_order_relaxed);
+-    }
++ public:
++  explicit Segment(const Ticket t) noexcept : min_(t) {}
+ 
+-    bool casNextSegment(Segment* next) noexcept {
+-      Segment* expected = nullptr;
+-      return next_.compare_exchange_strong(
+-          expected, next, std::memory_order_release, std::memory_order_relaxed);
+-    }
++  Segment* nextSegment() const noexcept {
++    return next_.load(std::memory_order_acquire);
++  }
+ 
+-    FOLLY_ALWAYS_INLINE Ticket minTicket() const noexcept {
+-      DCHECK_EQ((min_ & (SegmentSize - 1)), Ticket(0));
+-      return min_;
+-    }
++  void setNextSegment(Segment* next) {
++    next_.store(next, std::memory_order_relaxed);
++  }
+ 
+-    FOLLY_ALWAYS_INLINE Entry& entry(size_t index) noexcept {
+-      return b_[index];
+-    }
++  bool casNextSegment(Segment* next) noexcept {
++    Segment* expected = nullptr;
++    return next_.compare_exchange_strong(
++        expected, next, std::memory_order_release, std::memory_order_relaxed);
++  }
+ 
+-    template <typename S>
+-    void push_links(bool m, S& s) {
+-      if (m == false) { // next_ is immutable
+-        auto p = nextSegment();
+-        if (p) {
+-          s.push(p);
+-        }
++  FOLLY_ALWAYS_INLINE Ticket minTicket() const noexcept {
++    DCHECK_EQ((min_ & (SegmentSize - 1)), Ticket(0));
++    return min_;
++  }
++
++  FOLLY_ALWAYS_INLINE Entry& entry(size_t index) noexcept {
++    return b_[index];
++  }
++
++  template <typename S>
++  void push_links(bool m, S& s) {
++    if (m == false) { // next_ is immutable
++      auto p = nextSegment();
++      if (p) {
++        s.push(p);
+       }
+     }
+-  }; // Segment
++  }
++}; // Segment
+ 
+-}; // UnboundedQueue
+ 
+ /* Aliases */
+ 

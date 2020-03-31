@@ -103,8 +103,9 @@ template <typename T, bool USE_BINARY_PROTOCOL = false>
 class ThriftClientPool {
  private:
   struct ClientStatusCallback
-      : public apache::thrift::CloseCallback
-      , public apache::thrift::async::TAsyncSocket::ConnectCallback {
+    : public apache::thrift::CloseCallback
+    , public folly::AsyncSocket::ConnectCallback
+  {
     ClientStatusCallback(const folly::SocketAddress& addr)
       : is_good(true)
       , create_time(time(nullptr))
@@ -122,8 +123,7 @@ class ThriftClientPool {
         << " connection established after " << elapsedTime() << " seconds";
     }
 
-    void connectError(const apache::thrift::transport::TTransportException& ex)
-        noexcept override {
+    void connectErr(const folly::AsyncSocketException& ex) noexcept override {
       LOG(ERROR) << peer_addr << " ConnectError: " << ex.what()
                  << " after " << elapsedTime() << " seconds";
 
