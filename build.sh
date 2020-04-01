@@ -1,5 +1,5 @@
 #!/bin/bash
-
+set -euo pipefail
 mkdir -p external
 export SRCDIR=`pwd`
 
@@ -64,18 +64,17 @@ make -j
 make install
 popd
 
-git clone https://github.com/facebook/zstd.git
+git clone https://github.com/facebook/zstd.git -b v1.4.4 --single-branch
 pushd zstd
-git reset --hard f405b8acbe8be70aa05e0a7bf035fe1efe20b99f
 cd build/cmake
 cmake . -DCMAKE_INSTALL_PREFIX=$SRCDIR/external/zstd
-make -j
-make install
+make install -j
 popd
 
 # RUN: apt-get install libdouble-conversion-dev libgoogle-glog-dev libfmt-dev libboost-context-dev
 git clone https://github.com/facebook/folly -b v2020.03.23.00 --single-branch
 pushd folly
+git apply $SRCDIR/folly.patch
 mkdir build_
 cd build_
 (
@@ -136,12 +135,12 @@ cmake \
     -DFOLLY_LIBRARYDIR=$SRCDIR/external/folly/lib \
     -DFOLLY_INCLUDEDIR=$SRCDIR/external/folly/include \
     -DCMAKE_PREFIX_PATH="$SRCDIR/external/fizz/lib/cmake"
-make -j
-make install
+make install -j
 popd
 
 git clone https://github.com/facebook/fbthrift -b v2020.03.23.00 --single-branch
 pushd fbthrift
+git apply $SRCDIR/fbthrift.patch
 mkdir build_
 cd build_
 (
@@ -154,8 +153,7 @@ cd build_
         -DCMAKE_INSTALL_PREFIX=$SRCDIR/external/fbthrift \
         -DCMAKE_PREFIX_PATH="$SRCDIR/external/folly/lib/cmake;$SRCDIR/external/rsocket/lib/cmake;$SRCDIR/external/fizz/lib/cmake;$SRCDIR/external/wangle/lib/cmake"
 )
-make -j
-make install
+make install -j
 popd
 
 git clone https://github.com/mavam/libbf
@@ -209,8 +207,7 @@ pushd aws-c-common
 mkdir build
 cd build
 cmake .. -DCMAKE_INSTALL_PREFIX=$SRCDIR/external/aws-c-common
-make -j
-make
+make install -j
 popd
 
 git clone https://github.com/awslabs/aws-checksums -b v0.1.5 --single-branch
@@ -218,8 +215,7 @@ pushd aws-checksums
 mkdir build
 cd build
 cmake .. -DCMAKE_INSTALL_PREFIX=$SRCDIR/external/aws-checksums
-make -j
-make
+make install -j
 popd
 
 git clone https://github.com/awslabs/aws-c-event-stream -b v0.1.4 --single-branch
@@ -231,8 +227,7 @@ cmake \
     -DCMAKE_INSTALL_PREFIX=$SRCDIR/external/aws-c-event-stream \
     -DCMAKE_PREFIX_PATH="$SRCDIR/external/aws-c-common/lib/aws-c-common/cmake;$SRCDIR/external/aws-checksums/lib/aws-checksums/cmake" \
     -DCMAKE_MODULE_PATH="$SRCDIR/external/aws-c-common/lib/cmake;"
-make -j
-make install
+make install -j
 popd
 
 git clone https://github.com/facebook/rocksdb -b v5.14.3 --single-branch
@@ -254,7 +249,10 @@ cd build
 make install DEBUG_LEVEL=0 -j 4
 popd
 
+popd
 #build:
+mkdir build
+cd build
 cmake_prefix_path=(
     $SRCDIR/external/librdkafka/lib/cmake
     $SRCDIR/external/folly/lib/cmake
@@ -278,3 +276,4 @@ cmake \
     .. \
     -DCMAKE_PREFIX_PATH=$cmake_prefix_path \
     -DCMAKE_MODULE_PATH=$SRCDIR/external/librdkafka/lib/cmake/RdKafka
+make -j
