@@ -1,5 +1,12 @@
 # Rocksplicator
 
+## For Ahrefs
+
+To build, _use_ `build.sh` and invoke the script at the repository root.
+To clean up, remove `workdir` and `external` directories created by this script.
+
+## Introduction
+
 [![Build Status](https://travis-ci.org/pinterest/rocksplicator.svg)](https://travis-ci.org/pinterest/rocksplicator)
 
 Rocksplicator is a set of C++ libraries and tools for building large scale [RocksDB](http://rocksdb.org/) based stateful services. Its goal is to help application developers solve common difficulties of building large scale stateful services, such as data replication, request routing and cluster management. With Rocksplicator, application developers just need to focus on their application logics, and won't need to deal with data replication, request routing nor cluster management.
