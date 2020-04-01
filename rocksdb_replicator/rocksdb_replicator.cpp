@@ -17,6 +17,8 @@
 //
 
 #include "rocksdb_replicator/rocksdb_replicator.h"
+#include "folly/synchronization/Baton.h"
+#include "folly/io/async/EventBase.h"
 
 #include <gflags/gflags.h>
 
@@ -42,14 +44,29 @@ DEFINE_int32(rocksdb_replicator_executor_threads, 32,
 
 namespace replicator {
 
+class InitLoopCallback : public folly::EventBase::LoopCallback
+{
+public:
+  InitLoopCallback() {}
+  void waitInit() {
+    baton.wait();
+  }
+  void runLoopCallback() noexcept override {
+    LOG(INFO) << "Event loop started!";
+    baton.post();
+  }
+private:
+  folly::Baton<> baton;
+};
+
 RocksDBReplicator::RocksDBReplicator()
     : executor_()
     , client_pool_(FLAGS_num_replicator_io_threads)
     , db_map_()
 #if __GNUC__ >= 8
-    , server_()
+    , server_(new apache::thrift::ThriftServer())
 #else
-    , server_("disabled", false)
+    , server_(new apache::thrift::ThriftServer("disabled", false))
 #endif
     , thread_()
     , cleaner_() {
@@ -65,8 +82,8 @@ RocksDBReplicator::RocksDBReplicator()
     std::make_shared<wangle::NamedThreadFactory>("rptor-worker-"));
 #endif
 
-  server_.setInterface(std::make_unique<ReplicatorHandler>(&db_map_));
-  server_.setPort(FLAGS_rocksdb_replicator_port);
+  server_->setInterface(std::make_unique<ReplicatorHandler>(&db_map_));
+  server_->setPort(FLAGS_rocksdb_replicator_port);
 #if __GNUC__ >= 8
   auto io_thread_pool = std::make_shared<folly::IOThreadPoolExecutor>(
     0, std::make_shared<folly::NamedThreadFactory>("rptor-svr-io-"));
@@ -74,21 +91,37 @@ RocksDBReplicator::RocksDBReplicator()
   auto io_thread_pool = std::make_shared<wangle::IOThreadPoolExecutor>(
     0, std::make_shared<wangle::NamedThreadFactory>("rptor-svr-io-"));
 #endif
-  server_.setIOThreadPool(std::move(io_thread_pool));
+  server_->setIOThreadPool(std::move(io_thread_pool));
   // TODO(bol) share io threads between server_ and client_pool_
-  server_.setNWorkerThreads(FLAGS_num_replicator_io_threads);
+  server_->setNWorkerThreads(FLAGS_num_replicator_io_threads);
 
-  thread_ = std::thread([this] {
+  InitLoopCallback cb;
+  thread_ = std::thread([this, &cb] {
       LOG(INFO) << "Starting replicator server ...";
-      this->server_.serve();
-      LOG(INFO) << "Stoping replicator server ...";
+      server_->setup();
+      auto evb = server_->getEventBaseManager()->getEventBase();
+      evb->runBeforeLoop(&cb);
+      evb->loopForever();
+      LOG(INFO) << "Stopping replicator server ...";
     });
+  cb.waitInit();
 }
 
 RocksDBReplicator::~RocksDBReplicator() {
   db_map_.clear();
   cleaner_.stopAndWait();
-  server_.stop();
+  LOG(INFO) << "Stopping replicator server ...";
+  server_->stopListening();
+  LOG(INFO) << "Stopped listening replicator server ...";
+  server_->stopWorkers();
+  LOG(INFO) << "Stopped replicator server workers...";
+  server_->stopCPUWorkers();
+  LOG(INFO) << "Stopped replicator server threadpool...";
+  server_->stop();
+  server_->cleanUp();
+  LOG(INFO) << "Dropping replicator server...";
+  server_ = nullptr;
+  LOG(INFO) << "Joining...";
   thread_.join();
 }
 

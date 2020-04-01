@@ -35,8 +35,8 @@ target_link_libraries(
   rocksdb_admin
 
   ${JNI_LIBRARIES}
-  FBThrift::thrift
   FBThrift::thriftcpp2
+  FBThrift::thrift
   Folly::folly
   RdKafka::rdkafka++
   RocksDB::rocksdb
@@ -46,8 +46,8 @@ target_link_libraries(
   kafka_consumer
   pthread
   rocksdb_admin_detail
-  rocksdb_glogger
   rocksdb_replicator
+  rocksdb_glogger
   )
 
 add_subdirectory(tests)

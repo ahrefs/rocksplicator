@@ -19,6 +19,7 @@
 #include <functional>
 
 #include "gtest/gtest.h"
+#include <folly/init/Init.h>
 
 using folly::Duration;
 using folly::Future;
@@ -194,6 +195,7 @@ TEST_F(FutureUtilTest, BothFailedWithPrimaryBeforeSpeculativeCall) {
 }  // namespace
 
 int main(int argc, char** argv) {
+  folly::Init init(&argc, &argv);
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }

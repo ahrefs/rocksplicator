@@ -64,7 +64,7 @@ void GracefulShutdownHandler::InitiateGracefulShutdown() {
   // let existing work to finish, then shutdown workers.
   // it's okay to call join() on ThreadManager even when the
   // stopWorkersOnStopListening_ flag is set.
-  server_->getThreadManager()->join();
+  server_->stopWorkers();
   LOG(INFO) << "Stopped worker thread pool.";
   // no new requests will be accepted from now on, so it should be safe for us
   // to perform ordered shutdown on other handlers

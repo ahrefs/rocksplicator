@@ -31,3 +31,10 @@ target_include_directories(
   ${FBTHRIFT_INCLUDE_DIR}
   ${WANGLE_INCLUDE_DIR}
   )
+target_link_libraries(
+  replicator_thrift
+
+  FBThrift::thriftcpp2
+  FBThrift::thrift
+  FBThrift::thriftprotocol
+  )

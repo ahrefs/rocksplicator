@@ -23,6 +23,7 @@
 
 #include "folly/fibers/Baton.h"
 #include "folly/io/async/AsyncSignalHandler.h"
+#include "folly/init/Init.h"
 #include "gtest/gtest.h"
 
 #include "common/graceful_shutdown_handler.h"
@@ -214,8 +215,8 @@ TEST_F(GracefulShutdownTest, NewConnectionAfterPostShutdownTest) {
 
 
 int main(int argc, char** argv) {
+  folly::Init init(&argc, &argv);
   FLAGS_logtostderr = 1;
-  google::InitGoogleLogging(argv[0]);
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }

@@ -21,6 +21,9 @@
 
 namespace common {
 
+RocksdbGLogger::RocksdbGLogger() {}
+RocksdbGLogger::~RocksdbGLogger() {}
+
 void RocksdbGLogger::Logv(const char* format, va_list ap) {
   static const int kBufSize = 2048;
   static char buf[kBufSize];

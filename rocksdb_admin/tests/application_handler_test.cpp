@@ -23,6 +23,7 @@
 #include "gtest/gtest.h"
 #include "rocksdb/db.h"
 #include "rocksdb/options.h"
+#include "folly/init/Init.h"
 
 #define protected public
 #include "rocksdb_admin/admin_handler.h"

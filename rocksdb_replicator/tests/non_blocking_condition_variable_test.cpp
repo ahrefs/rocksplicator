@@ -23,6 +23,7 @@
 #include "gtest/gtest.h"
 #include "rocksdb_replicator/non_blocking_condition_variable.h"
 #include "folly/executors/CPUThreadPoolExecutor.h"
+#include <folly/init/Init.h>
 
 using replicator::detail::NonBlockingConditionVariable;
 using std::atomic;
@@ -149,6 +150,7 @@ TEST(NonBlockingConditionVariableTest, Stress) {
 }
 
 int main(int argc, char** argv) {
+  folly::Init init(&argc, &argv);
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }

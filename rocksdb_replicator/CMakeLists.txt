@@ -15,20 +15,22 @@ target_include_directories(
 target_link_libraries(
   rocksdb_replicator
 
-  FBThrift::thrift
+  RocksDB::rocksdb
   FBThrift::thriftcpp2
+  FBThrift::thrift
   FBThrift::thriftprotocol
   Folly::folly
-  boost_system
-  common
   gflags
   glog
   jemalloc
   pthread
-  replicator_thrift
-  RocksDB::rocksdb
+  boost_system
   ssl
+
+  common
   stats
+  replicator_thrift
+  rocksdb_glogger
   )
 
 # Build performance

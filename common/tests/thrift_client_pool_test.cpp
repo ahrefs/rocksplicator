@@ -27,6 +27,7 @@
 #include "gtest/gtest.h"
 #include "common/tests/thrift/gen-cpp2/DummyService.h"
 #include "common/thrift_client_pool.h"
+#include "folly/init/Init.h"
 #include "thrift/lib/cpp2/server/ThriftServer.h"
 
 using apache::thrift::HandlerCallback;
@@ -291,6 +292,7 @@ TEST(ThriftClientTest, Stress) {
 }
 
 int main(int argc, char** argv) {
+  folly::Init init(&argc, &argv);
   ::testing::InitGoogleTest(&argc, argv);
   FLAGS_channel_cleanup_min_interval_seconds = -1;
   return RUN_ALL_TESTS();

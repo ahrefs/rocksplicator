@@ -28,6 +28,7 @@
 
 #include "common/tests/thrift/gen-cpp2/DummyService.h"
 #include "common/thrift_router.h"
+#include "folly/init/Init.h"
 #include "thrift/lib/cpp2/server/ThriftServer.h"
 
 using apache::thrift::HandlerCallback;
@@ -918,6 +919,7 @@ TEST(ThriftRouterTest, UnreachableHost) {
 }
 
 int main(int argc, char** argv) {
+  folly::Init init(&argc, &argv);
   FLAGS_always_prefer_local_host = false;
   ::testing::InitGoogleTest(&argc, argv);
   FLAGS_channel_cleanup_min_interval_seconds = -1;

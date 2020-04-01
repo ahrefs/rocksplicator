@@ -25,6 +25,7 @@
 // private
 #define private public
 #include "rocksdb_replicator/rocksdb_replicator.h"
+#include <folly/init/Init.h>
 
 using folly::SocketAddress;
 using replicator::DBRole;
@@ -419,6 +420,7 @@ TEST(RocksDBReplicatorTest, Stress) {
 }
 
 int main(int argc, char** argv) {
+  folly::Init init(&argc, &argv);
   FLAGS_replicator_pull_delay_on_error_ms = 100;
   ::testing::InitGoogleTest(&argc, argv);
   auto ret = RUN_ALL_TESTS();

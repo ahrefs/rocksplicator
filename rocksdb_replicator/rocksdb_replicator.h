@@ -228,7 +228,7 @@ class RocksDBReplicator {
   detail::FastReadMap<std::string,
     std::shared_ptr<RocksDBReplicator::ReplicatedDB>> db_map_;
 
-  apache::thrift::ThriftServer server_;
+  std::unique_ptr<apache::thrift::ThriftServer> server_;
 
   std::thread thread_;
 

@@ -26,8 +26,9 @@ namespace common {
  * This class simply forwards logs to GLog.
  */
 class RocksdbGLogger : public rocksdb::Logger {
- public:
-  RocksdbGLogger() {}
+public:
+  RocksdbGLogger();
+  ~RocksdbGLogger();
 
   void Logv(const char* format, va_list ap) override;
 };
